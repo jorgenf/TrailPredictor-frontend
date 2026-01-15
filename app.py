@@ -124,10 +124,7 @@ def fetch_segments():
 
 df_areas, df_trails = fetch_predictions()
 df_segments = fetch_segments()
-print("DATAAAA")
-print(df_areas)
-print(df_trails)
-print(df_segments)
+
 if 'trail_lines' not in st.session_state:
     st.session_state.trail_lines = {}
     for _, segment in df_segments.iterrows():
@@ -287,12 +284,20 @@ if 'last_center' not in st.session_state:
     st.session_state.last_zoom = 12
 
 # Create base map
+#m = folium.Map(
+#    location=st.session_state.last_center,
+#    zoom_start=st.session_state.last_zoom,
+#    tiles="https://tiles-eu.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg",
+#    control_scale=True,
+#    attr="© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)"
+#)
+
 m = folium.Map(
     location=st.session_state.last_center,
     zoom_start=st.session_state.last_zoom,
-    tiles="https://tiles-eu.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg",
+    tiles='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',  # OSM tile URL
     control_scale=True,
-    attr="© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)"
+    attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 )
 
 # Disable blue focus box around features

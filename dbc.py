@@ -16,6 +16,53 @@ SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+# --- Fetch trail predictions ---
+def fetch_trail_predictions():
+    # Fetch trail_predictions
+    resp_tp = supabase.table("trail_predictions").select("*").execute()
+
+    df_tp = pd.DataFrame(resp_tp.data)
+
+    # Fetch trail_segments
+    resp_ts = supabase.table("trail_segments").select("id, name, area_id").execute()
+    df_ts = pd.DataFrame(resp_ts.data)
+
+    # Merge like SQL join
+    df = df_tp.merge(df_ts, left_on="trail_id", right_on="id", how="left")
+    df.rename(columns={"name": "trail_name"}, inplace=True)
+    df.drop(columns=["id"], inplace=True)  # drop redundant id
+
+    # Apply util calculations
+    import util
+    df = util.calculate_damage_score(df)
+    df = util.calculate_condition_score(df)
+    df = util.calculate_median_speed_score(df)
+
+    return df
+
+
+
+# --- Fetch area predictions ---
+def fetch_area_predictions(df_trails):
+    """
+    Fetches area predictions and joins areas for area_name.
+    Applies calculate_area_scores using df_trails.
+    """
+    resp = supabase.table("area_predictions").select("*, areas(name)").execute()
+
+    df = pd.DataFrame(resp.data)
+
+    # Flatten areas
+    if "areas" in df.columns:
+        df["area_name"] = df["areas"].apply(lambda x: x["name"] if x else None)
+        df.drop(columns=["areas"], inplace=True)
+
+    # Apply your utility calculations
+    import util
+    df = util.calculate_area_scores(df, df_trails)
+    return df
+
+# --- Fetch trail segments ---
 
 
 from shapely.geometry import shape

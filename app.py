@@ -73,7 +73,7 @@ st.caption("Model-based predictions using terrain, weather & surface indicators"
 # --------------------------------------------------
 
 
-@st.cache_data
+@st.cache_data(ttl=600)
 def fetch_predictions():
     """
     Returns df_areas, df_trails with all util calculations applied.
@@ -81,7 +81,7 @@ def fetch_predictions():
     df_areas, df_trails = dbc.fetch_predictions()
     return df_areas, df_trails
 
-@st.cache_data
+@st.cache_data(ttl=600)
 def fetch_segments():
     # Fetch segments from your database / Supabase
     df = dbc.fetch_segments()  # This returns the same as get_segments()

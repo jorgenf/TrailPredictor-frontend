@@ -9,6 +9,7 @@ from shapely import wkb
 from shapely.geometry import shape
 import pandas as pd
 import json
+import util
 
 # --- Supabase client ---
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -19,9 +20,29 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 # --- Fetch trail predictions ---
 def fetch_trail_predictions():
     # Fetch trail_predictions
-    resp_tp = supabase.table("trail_predictions").select("*").execute()
+    batch_size=1000
+    all_rows = []
+    offset = 0
 
-    df_tp = pd.DataFrame(resp_tp.data)
+    while True:
+        resp = (
+            supabase
+            .table("trail_predictions")
+            .select("*")
+            .range(offset, offset + batch_size - 1)
+            .execute()
+        )
+
+        data = resp.data
+        if not data:
+            break
+
+        all_rows.extend(data)
+        offset += batch_size
+
+    df_tp = pd.DataFrame(all_rows)
+    #resp_tp = supabase.table("trail_predictions").select("*").execute()
+    #df_tp = pd.DataFrame(resp_tp.data)
 
     # Fetch trail_segments
     resp_ts = supabase.table("trail_segments").select("id, name, area_id").execute()
@@ -33,7 +54,7 @@ def fetch_trail_predictions():
     df.drop(columns=["id"], inplace=True)  # drop redundant id
 
     # Apply util calculations
-    import util
+    
     df = util.calculate_damage_score(df)
     df = util.calculate_condition_score(df)
     df = util.calculate_median_speed_score(df)
@@ -48,9 +69,30 @@ def fetch_area_predictions(df_trails):
     Fetches area predictions and joins areas for area_name.
     Applies calculate_area_scores using df_trails.
     """
-    resp = supabase.table("area_predictions").select("*, areas(name)").execute()
+    batch_size=1000
+    all_rows = []
+    offset = 0
 
-    df = pd.DataFrame(resp.data)
+    while True:
+        resp = (
+            supabase
+            .table("trail_predictions")
+            .select("*, areas(name)")
+            .range(offset, offset + batch_size - 1)
+            .execute()
+        )
+
+        data = resp.data
+        if not data:
+            break
+
+        all_rows.extend(data)
+        offset += batch_size
+
+    df = pd.DataFrame(all_rows)
+
+    #resp = supabase.table("area_predictions").select("*, areas(name)").execute()
+    #df = pd.DataFrame(resp.data)
 
     # Flatten areas
     if "areas" in df.columns:

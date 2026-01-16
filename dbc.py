@@ -76,7 +76,7 @@ def fetch_area_predictions(df_trails):
     while True:
         resp = (
             supabase
-            .table("trail_predictions")
+            .table("area_predictions")
             .select("*, areas(name)")
             .range(offset, offset + batch_size - 1)
             .execute()

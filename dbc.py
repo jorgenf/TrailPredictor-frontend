@@ -5,11 +5,11 @@ import json
 from supabase import create_client, Client
 from shapely.geometry import shape
 
-from shapely import wkb
 from shapely.geometry import shape
 import pandas as pd
 import json
 import util
+from datetime import timezone, datetime, timedelta
 
 # --- Supabase client ---
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -18,7 +18,7 @@ SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 # --- Fetch trail predictions ---
-def fetch_trail_predictions():
+def fetch_trail_predictions(after):
     # Fetch trail_predictions
     batch_size=1000
     all_rows = []
@@ -30,6 +30,7 @@ def fetch_trail_predictions():
             .table("trail_predictions")
             .select("*")
             .range(offset, offset + batch_size - 1)
+            .gte("timestamp", after)
             .execute()
         )
 
@@ -64,7 +65,7 @@ def fetch_trail_predictions():
 
 
 # --- Fetch area predictions ---
-def fetch_area_predictions(df_trails):
+def fetch_area_predictions(df_trails, after):
     """
     Fetches area predictions and joins areas for area_name.
     Applies calculate_area_scores using df_trails.
@@ -79,6 +80,7 @@ def fetch_area_predictions(df_trails):
             .table("area_predictions")
             .select("*, areas(name)")
             .range(offset, offset + batch_size - 1)
+            .gte("timestamp", after)
             .execute()
         )
 
@@ -164,10 +166,11 @@ def fetch_predictions():
     """
     Returns df_areas, df_trails exactly like your original app expected.
     """
-    df_trails = fetch_trail_predictions()
+    three_days_ago = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+    df_trails = fetch_trail_predictions(three_days_ago)
     if df_trails is None:
         return None, None
-    df_areas = fetch_area_predictions(df_trails)
+    df_areas = fetch_area_predictions(df_trails, three_days_ago)
     if df_areas is None:
         return None, None
     return df_areas, df_trails

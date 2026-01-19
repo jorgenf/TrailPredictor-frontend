@@ -30,7 +30,7 @@ def fetch_trail_predictions(after):
             .table("trail_predictions")
             .select("*")
             .range(offset, offset + batch_size - 1)
-            .gte("timestamp", after)
+            #.gte("timestamp", after)
             .execute()
         )
 
@@ -42,8 +42,6 @@ def fetch_trail_predictions(after):
         offset += batch_size
 
     df_tp = pd.DataFrame(all_rows)
-    #resp_tp = supabase.table("trail_predictions").select("*").execute()
-    #df_tp = pd.DataFrame(resp_tp.data)
 
     # Fetch trail_segments
     resp_ts = supabase.table("trail_segments").select("id, name, area_id").execute()
@@ -80,7 +78,7 @@ def fetch_area_predictions(df_trails, after):
             .table("area_predictions")
             .select("*, areas(name)")
             .range(offset, offset + batch_size - 1)
-            .gte("timestamp", after)
+            #.gte("timestamp", after)
             .execute()
         )
 
@@ -93,16 +91,12 @@ def fetch_area_predictions(df_trails, after):
 
     df = pd.DataFrame(all_rows)
 
-    #resp = supabase.table("area_predictions").select("*, areas(name)").execute()
-    #df = pd.DataFrame(resp.data)
-
     # Flatten areas
     if "areas" in df.columns:
         df["area_name"] = df["areas"].apply(lambda x: x["name"] if x else None)
         df.drop(columns=["areas"], inplace=True)
 
     # Apply your utility calculations
-    import util
     df = util.calculate_area_scores(df, df_trails)
     return df
 

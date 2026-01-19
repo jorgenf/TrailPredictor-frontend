@@ -48,7 +48,7 @@ def header():
 # TABS
 # --------------------------------------------------
 
-tab1, tab2, tab3, tab4 = st.tabs(["Map", "Area Overview", "Trail details", "Details"])
+tab1, tab2, tab3 = st.tabs(["Map", "Area Overview", "Details"])
 
 
 # --------------------------------------------------
@@ -420,6 +420,75 @@ with tab1:
         st.session_state.last_slider_value = selected_time
         if st.session_state.selected_trail:
             st.rerun()
+
+# --------------------------------------------------
+# TRAIL DETAIL VIEW
+# --------------------------------------------------
+    st.subheader("Trail details")
+
+    if st.session_state.selected_trail is not None:
+        selected_trail = st.session_state.selected_trail
+    else:
+        selected_trail = sorted(set(df_segments["name"].tolist()))[0]
+    
+
+    # Get the corresponding trail data for the selected trail
+    mask = (
+        (df_trails["trail_name"] == selected_trail) &
+        (df_trails["time_hour"] == pd.Timestamp(selected_time))
+    )
+
+    if mask.any():
+        trail_row = df_trails.loc[mask].iloc[0]
+
+        st.write(f"**Trail:** {selected_trail}")
+        st.write(f"**Timestamp:** {trail_row['timestamp']}")
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        with c1:
+            st.markdown("### 🌧 Conditions")
+            st.write(f"Overall: {trail_row['conditions']}")
+            st.write(f"Water pooling: {trail_row['standing_water']}")
+            st.write(f"Soft ground: {trail_row['soft_ground']}")
+            st.write(f"Slippery roots: {trail_row['slippery_roots']}")
+            st.write(f"Ice present: {trail_row['ice_present']}")
+
+        with c2:
+            st.markdown("### 🌡 Weather")
+            features = trail_row["features"]
+            st.write(f"Temperature: {features['temp_now']:.1f} °C")
+            st.write(f"Rain 24h: {features['rain_24h']:.1f} mm")
+            st.write(f"Humidity: {features['humidity_now']:.0f} %")
+            st.write(f"Wind: {features['wind_now']:.1f} m/s")
+
+        with c3:
+            st.markdown("### 🏔 Terrain")
+            st.write(f"Elevation: {features['elevation']:.0f} m")
+            st.write(f"Slope: {features['slope']:.1f}°")
+
+        with c4:
+            st.markdown("### 🚵 Scores")
+            st.write(f"Condition score: {trail_row['condition_score']:.1f}")
+            st.write(f"Damage score: {trail_row['damage_score']:.1f}")
+            st.write(f"Speed score: {trail_row['speed_score']:.1f}")
+
+        if trail_row["condition_score"] <= 5:
+            st.warning("⚠️ Trail likely slippery — not recommended to ride.")
+        else:
+            st.success("✅ Trail likely rideable.")
+        if trail_row["damage_score"] >= 5:
+            st.warning("⚠️ Trail likely vulnerable — riding may cause damage.")
+        else:
+            st.success("✅ Riding trail will likely not cause excessive damage.")
+
+        st.divider()
+    else:
+        selected_hour_str = pd.Timestamp(selected_time).strftime("%Y-%m-%d %H:%M")
+        st.write(
+            f"No data available for the selected trail at this hour "
+            f"({selected_hour_str})"
+        )
 
 
 # --------------------------------------------------
@@ -998,81 +1067,13 @@ with tab2:
 
     st.divider()
 
-with tab3:
-    # --------------------------------------------------
-    # TRAIL DETAIL VIEW
-    # --------------------------------------------------
-    st.subheader("Trail details")
 
-    if st.session_state.selected_trail is not None:
-        selected_trail = st.session_state.selected_trail
-    else:
-        selected_trail = sorted(set(df_segments["name"].tolist()))[0]
-    
-
-    # Get the corresponding trail data for the selected trail
-    mask = (
-        (df_trails["trail_name"] == selected_trail) &
-        (df_trails["time_hour"] == pd.Timestamp(selected_time))
-    )
-
-    if mask.any():
-        trail_row = df_trails.loc[mask].iloc[0]
-
-        st.write(f"**Trail:** {selected_trail}")
-        st.write(f"**Timestamp:** {trail_row['timestamp']}")
-
-        c1, c2, c3, c4 = st.columns(4)
-
-        with c1:
-            st.markdown("### 🌧 Conditions")
-            st.write(f"Overall: {trail_row['conditions']}")
-            st.write(f"Water pooling: {trail_row['standing_water']}")
-            st.write(f"Soft ground: {trail_row['soft_ground']}")
-            st.write(f"Slippery roots: {trail_row['slippery_roots']}")
-            st.write(f"Ice present: {trail_row['ice_present']}")
-
-        with c2:
-            st.markdown("### 🌡 Weather")
-            features = trail_row["features"]
-            st.write(f"Temperature: {features['temp_now']:.1f} °C")
-            st.write(f"Rain 24h: {features['rain_24h']:.1f} mm")
-            st.write(f"Humidity: {features['humidity_now']:.0f} %")
-            st.write(f"Wind: {features['wind_now']:.1f} m/s")
-
-        with c3:
-            st.markdown("### 🏔 Terrain")
-            st.write(f"Elevation: {features['elevation']:.0f} m")
-            st.write(f"Slope: {features['slope']:.1f}°")
-
-        with c4:
-            st.markdown("### 🚵 Scores")
-            st.write(f"Condition score: {trail_row['condition_score']:.1f}")
-            st.write(f"Damage score: {trail_row['damage_score']:.1f}")
-            st.write(f"Speed score: {trail_row['speed_score']:.1f}")
-
-        if trail_row["condition_score"] <= 5:
-            st.warning("⚠️ Trail likely slippery — not recommended to ride.")
-        else:
-            st.success("✅ Trail likely rideable.")
-        if trail_row["damage_score"] >= 5:
-            st.warning("⚠️ Trail likely vulnerable — riding may cause damage.")
-        else:
-            st.success("✅ Riding trail will likely not cause excessive damage.")
-
-        st.divider()
-    else:
-        selected_hour_str = pd.Timestamp(selected_time).strftime("%Y-%m-%d %H:%M")
-        st.write(
-            f"No data available for the selected trail at this hour "
-            f"({selected_hour_str})"
-        )
 
 
 # --------------------------------------------------
 # AREA OVERVIEW TABLE
 # --------------------------------------------------
-with tab4:
+with tab3:
     st.subheader("Area overview")
 
     st.dataframe(

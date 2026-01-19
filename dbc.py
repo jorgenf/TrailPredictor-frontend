@@ -29,8 +29,9 @@ def fetch_trail_predictions(after):
             supabase
             .table("trail_predictions")
             .select("*")
+            .gte("timestamp", after)
+            .order("timestamp", desc=False)
             .range(offset, offset + batch_size - 1)
-            #.gte("timestamp", after)
             .execute()
         )
 
@@ -77,8 +78,9 @@ def fetch_area_predictions(df_trails, after):
             supabase
             .table("area_predictions")
             .select("*, areas(name)")
+            .gte("timestamp", after)
+            .order("timestamp", desc=False)
             .range(offset, offset + batch_size - 1)
-            #.gte("timestamp", after)
             .execute()
         )
 

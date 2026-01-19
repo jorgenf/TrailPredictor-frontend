@@ -239,9 +239,6 @@ def get_direction(sin, cos):
 # --------------------------------------------------
 # MAP
 # --------------------------------------------------
-# --------------------------------------------------
-# MAP
-# --------------------------------------------------
 with tab1:
     if "selected_trail" not in st.session_state:
         st.session_state.selected_trail = None
@@ -309,21 +306,21 @@ with tab1:
         st.session_state.last_zoom = 12
 
     # Create base map
-    #m = folium.Map(
-    #    location=st.session_state.last_center,
-    #    zoom_start=st.session_state.last_zoom,
-    #    tiles="https://tiles-eu.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg",
-    #    control_scale=True,
-    #    attr="© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)"
-    #)
-
     m = folium.Map(
         location=st.session_state.last_center,
         zoom_start=st.session_state.last_zoom,
-        tiles='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',  # OSM tile URL
+        tiles="https://tiles-eu.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg",
         control_scale=True,
-        attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attr="© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)"
     )
+
+    #m = folium.Map(
+    #    location=st.session_state.last_center,
+    #    zoom_start=st.session_state.last_zoom,
+    #    tiles='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',  # OSM tile URL
+    #    control_scale=True,
+    #    attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    #)
 
     # Disable blue focus box around features
     m.get_root().html.add_child(folium.Element("""
@@ -1090,7 +1087,6 @@ with tab4:
     # TRAIL OVERVIEW TABLE
     # --------------------------------------------------
     st.subheader("Trail overview")
-    print("DF trails: ", len(df_trails))
     st.dataframe(
         df_trails,
         width='stretch',

@@ -557,14 +557,7 @@ with tab2:
                 line=dict(color="#3498db", width=2, dash="dot")
             ))
 
-        # ---- Selected time marker ----
-        if selected_time is not None:
-            fig.add_vline(
-            x=pd.Timestamp(selected_time),
-            line_width=2,
-            line_dash="dash",
-            line_color="red"
-        )
+ 
         # Vertical time marker
         fig.add_vline(
             x=now,
@@ -724,13 +717,6 @@ with tab2:
 
         # Vertical time marker
         fig.add_vline(
-            x=pd.Timestamp(selected_time),
-            line_width=2,
-            line_dash="dash",
-            line_color="red"
-        )
-        # Vertical time marker
-        fig.add_vline(
             x=now,
             line_width=2,
             line_dash="dash",
@@ -820,13 +806,6 @@ with tab2:
             )
         )
 
-        # Selected time marker
-        fig.add_vline(
-            x=pd.Timestamp(selected_time),
-            line_width=2,
-            line_dash="dash",
-            line_color="red"
-        )
         # Vertical time marker
         fig.add_vline(
             x=now,
@@ -927,12 +906,6 @@ with tab2:
 
         fig.update_traces(line_shape="spline")
 
-        fig.add_vline(
-            x=pd.Timestamp(selected_time),
-            line_width=2,
-            line_dash="dash",
-            line_color="red"
-        )
         # Vertical time marker
         fig.add_vline(
             x=now,

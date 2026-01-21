@@ -443,7 +443,8 @@ with tab1:
 
         st.write(f"**Trail:** {selected_trail}")
         st.write(f"**Timestamp:** {trail_row['timestamp']}")
-
+        if trail_row['summary'] is not None:
+            st.markdown(f"*{trail_row['summary']}*")
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:

@@ -85,7 +85,7 @@ now = pd.Timestamp(datetime.now()).floor('h').strftime("%Y-%m-%d %H:%M")
 # --------------------------------------------------
 
 
-@st.cache_data(ttl=3600, persist=True)
+@st.cache_data(ttl=7200, persist=True)
 def fetch_predictions():
     """
     Returns df_areas, df_trails with all util calculations applied.
@@ -93,7 +93,7 @@ def fetch_predictions():
     df_areas, df_trails = dbc.fetch_predictions()
     return df_areas, df_trails
 
-@st.cache_data(ttl=3600, persist=True)
+@st.cache_data(ttl=7200, persist=True)
 def fetch_segments():
     # Fetch segments from your database / Supabase
     df = dbc.fetch_segments()  # This returns the same as get_segments()

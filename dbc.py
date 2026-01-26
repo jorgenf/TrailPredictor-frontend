@@ -58,7 +58,7 @@ def fetch_area_predictions_raw(after: str) -> pd.DataFrame:
         resp = (
             supabase
             .table("area_predictions")
-            .select("*")
+            .select("*, areas(name)")
             .gte("timestamp", after)
             .order("timestamp", desc=False)
             .range(offset, offset + batch_size - 1)
@@ -74,12 +74,15 @@ def fetch_area_predictions_raw(after: str) -> pd.DataFrame:
 
     df = pd.DataFrame(all_rows)
 
-    # Flatten areas relation if present
+    # Flatten areas relation
     if "areas" in df.columns:
-        df["area_name"] = df["areas"].apply(lambda x: x["name"] if x else None)
+        df["area_name"] = df["areas"].apply(
+            lambda x: x.get("name") if isinstance(x, dict) else None
+        )
         df.drop(columns=["areas"], inplace=True)
 
     return df
+
 
 
 @st.cache_data(ttl=7200)

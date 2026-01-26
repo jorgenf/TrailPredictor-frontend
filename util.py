@@ -9,10 +9,10 @@ def calculate_condition_score(df: pd.DataFrame) -> pd.DataFrame:
 
     df["condition_score"] = (
         df["conditions"].map(c_conditions_map).fillna(0) +
-        df["standing_water"].map(c_standing_water_map).fillna(0) +
-        df["slippery_roots"].map(c_slippery_roots_map).fillna(0) +
-        df["ice_present"].map(c_ice_present_map).fillna(0)
-    ).round(1)
+        df["standing_water"].fillna(False).map(c_standing_water_map) +
+        df["slippery_roots"].fillna(False).map(c_slippery_roots_map) +
+        df["ice_present"].fillna(False).map(c_ice_present_map)
+    ).fillna(0).round(1)
 
     return df
 
@@ -24,9 +24,9 @@ def calculate_damage_score(df: pd.DataFrame) -> pd.DataFrame:
 
     df["damage_score"] = (
         df["conditions"].map(d_conditions_map).fillna(0) +
-        df["standing_water"].map(d_standing_water_map).fillna(0) +
-        df["soft_ground"].map(d_soft_ground_map).fillna(0)
-    ).round(1)
+        df["standing_water"].fillna(False).map(d_standing_water_map) +
+        df["soft_ground"].fillna(False).map(d_soft_ground_map)
+    ).fillna(0).round(1)
 
     return df
 
@@ -36,14 +36,19 @@ def calculate_median_speed_score(df: pd.DataFrame) -> pd.DataFrame:
         df["speed_score"] = 0
         return df
 
-    trail_medians = df.groupby("trail_name")["median_speed"].median().to_dict()
+    # compute median speeds per trail, ignoring missing names
+    trail_medians = df.dropna(subset=["trail_name"]).groupby("trail_name")["median_speed"].median().to_dict()
 
     def score_from_speed(row):
         trail_name = row.get("trail_name")
         median_speed = row.get("median_speed", 0)
-        trail_median = trail_medians.get(trail_name, 1)
 
-        if median_speed == 0 or trail_median == 0:
+        # Skip missing trail_name or zero speed
+        if not trail_name or median_speed == 0:
+            return 0
+
+        trail_median = trail_medians.get(trail_name, median_speed)  # fallback to current row speed
+        if trail_median == 0:
             return 0
 
         score = ((median_speed / trail_median) - 1) * 5 + 5

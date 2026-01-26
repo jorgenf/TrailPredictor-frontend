@@ -84,65 +84,20 @@ now = pd.Timestamp(datetime.now()).floor('h').strftime("%Y-%m-%d %H:%M")
 # DATA FETCHING
 # --------------------------------------------------
 
-
-@st.cache_data(ttl=7200, persist=True)
-def fetch_predictions():
-    """
-    Returns df_areas, df_trails with all util calculations applied.
-    """
-    df_areas, df_trails = dbc.fetch_predictions()
-    return df_areas, df_trails
-
-@st.cache_data(ttl=7200, persist=True)
-def fetch_segments():
-    # Fetch segments from your database / Supabase
-    df = dbc.fetch_segments()  # This returns the same as get_segments()
-
-    def parse_geom(g):
-        if g is None:
-            return None
-        elif isinstance(g, dict):
-            # Supabase returns GeoJSON as dict
-            return shape(g)
-        elif isinstance(g, str):
-            # WKB hex string (legacy)
-            try:
-                return wkb.loads(bytes.fromhex(g))
-            except Exception:
-                return None
-        elif isinstance(g, (bytes, bytearray, memoryview)):
-            # Convert memoryview to bytes
-            if isinstance(g, memoryview):
-                g = g.tobytes()
-            try:
-                return wkb.loads(g)
-            except Exception:
-                return None
-        else:
-            # Unknown type
-            return None
-
-    # Parse geometry
-    df['geometry'] = df['coordinates'].apply(parse_geom)
-
-    # Extract coordinates for plotting
-    df['coords'] = df['geometry'].apply(
-        lambda geom: [(pt[1], pt[0]) for pt in geom.coords] if geom else []
-    )
-
-    return df
+three_days_ago = None  # we can pass in inside dbc.fetch_predictions
+df_areas, df_trails = dbc.fetch_predictions()  # fetch_predictions() uses cached raw fetches internally
 
 
+df_segments = dbc.fetch_segments()  # already fetches raw data and parses geometry
 
-df_areas, df_trails = fetch_predictions()
-df_segments = fetch_segments()
-print(f"Fetched: ", len(df_trails))
+print(f"Fetched trails: {len(df_trails)}")
+print(f"Fetched segments: {len(df_segments)}")
 
 if 'trail_lines' not in st.session_state:
     st.session_state.trail_lines = {}
     for _, segment in df_segments.iterrows():
-        trail_name = segment['name']
-        st.session_state.trail_lines[trail_name] = segment['geometry']
+        trail_name = segment.get('name', 'Unnamed Trail')
+        st.session_state.trail_lines[trail_name] = segment.get('geometry')
 
 # --------------------------------------------------
 # HELPERS

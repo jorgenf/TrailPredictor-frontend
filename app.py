@@ -84,14 +84,8 @@ now = pd.Timestamp(datetime.now()).floor('h').strftime("%Y-%m-%d %H:%M")
 # DATA FETCHING
 # --------------------------------------------------
 
-three_days_ago = None  # we can pass in inside dbc.fetch_predictions
-df_areas, df_trails = dbc.fetch_predictions()  # fetch_predictions() uses cached raw fetches internally
-
-
-df_segments = dbc.fetch_segments()  # already fetches raw data and parses geometry
-
-print(f"Fetched trails: {len(df_trails)}")
-print(f"Fetched segments: {len(df_segments)}")
+df_areas, df_trails = dbc.fetch_predictions()
+df_segments = dbc.fetch_segments()
 
 if 'trail_lines' not in st.session_state:
     st.session_state.trail_lines = {}

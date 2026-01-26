@@ -1,42 +1,47 @@
-# dbc.py (Streamlit + Supabase)
+# dbc.py (Streamlit + Supabase, cache-safe)
+
 import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
 from shapely.geometry import shape
 from shapely import wkb
-import util
 from datetime import datetime, timedelta, timezone
+import util
 
-# --- Supabase client ---
+# --------------------------------------------------
+# SUPABASE CLIENT
+# --------------------------------------------------
+
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-# ---------------------------
-# CACHED RAW DATA FETCHES
-# ---------------------------
+# --------------------------------------------------
+# RAW DATA FETCHES (CACHED, SERIALIZABLE ONLY)
+# --------------------------------------------------
 
 @st.cache_data(ttl=7200)
 def fetch_trail_predictions_raw(after: str) -> pd.DataFrame:
-    """
-    Fetch all rows from trail_predictions after a given timestamp.
-    """
     batch_size = 1000
-    all_rows = []
     offset = 0
+    all_rows = []
 
     while True:
         resp = (
-            supabase.table("trail_predictions")
-            .select("*")  # keep all columns
+            supabase
+            .table("trail_predictions")
+            .select("*")
             .gte("timestamp", after)
             .order("timestamp", desc=False)
             .range(offset, offset + batch_size - 1)
             .execute()
         )
+
         data = resp.data
         if not data:
             break
+
         all_rows.extend(data)
         offset += batch_size
 
@@ -45,31 +50,31 @@ def fetch_trail_predictions_raw(after: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=7200)
 def fetch_area_predictions_raw(after: str) -> pd.DataFrame:
-    """
-    Fetch area_predictions after a given timestamp, keep all columns.
-    """
     batch_size = 1000
-    all_rows = []
     offset = 0
+    all_rows = []
 
     while True:
         resp = (
-            supabase.table("area_predictions")
-            .select("*")  # keep all columns
+            supabase
+            .table("area_predictions")
+            .select("*")
             .gte("timestamp", after)
             .order("timestamp", desc=False)
             .range(offset, offset + batch_size - 1)
             .execute()
         )
+
         data = resp.data
         if not data:
             break
+
         all_rows.extend(data)
         offset += batch_size
 
     df = pd.DataFrame(all_rows)
 
-    # Flatten areas column if present
+    # Flatten areas relation if present
     if "areas" in df.columns:
         df["area_name"] = df["areas"].apply(lambda x: x["name"] if x else None)
         df.drop(columns=["areas"], inplace=True)
@@ -79,58 +84,73 @@ def fetch_area_predictions_raw(after: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=7200)
 def fetch_segments_raw() -> pd.DataFrame:
-    """
-    Fetch trail_segments, raw data only.
-    """
     resp = supabase.table("trail_segments").select("*").execute()
+
     if not resp.data:
         return pd.DataFrame(
             columns=[
-                "id", "name", "area_id", "length_m", "elevation_drop_m",
-                "difficulty", "coordinates", "geometry", "coords"
+                "id",
+                "name",
+                "area_id",
+                "length_m",
+                "elevation_drop_m",
+                "difficulty",
+                "coordinates",
             ]
         )
+
     return pd.DataFrame(resp.data)
 
+# --------------------------------------------------
+# PROCESSED DATA (CACHED, STILL NO GEOMETRY)
+# --------------------------------------------------
 
-# ---------------------------
-# PROCESSING FUNCTIONS (NOT CACHED)
-# ---------------------------
+@st.cache_data(ttl=7200)
+def fetch_predictions_processed():
+    """
+    Returns df_areas, df_trails
+    Fully processed but WITHOUT shapely geometry.
+    """
+    three_days_ago = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
 
-def fetch_trail_predictions(after: str) -> pd.DataFrame:
-    df_tp = fetch_trail_predictions_raw(after)
+    # --- Trails ---
+    df_tp = fetch_trail_predictions_raw(three_days_ago)
     df_ts = fetch_segments_raw()
 
-    if df_tp.empty or df_ts.empty:
-        return pd.DataFrame()
+    if df_tp.empty:
+        return pd.DataFrame(), pd.DataFrame()
 
-    # Merge trail predictions with segments
-    df = df_tp.merge(df_ts[["id", "name", "area_id"]], left_on="trail_id", right_on="id", how="left")
-    df.rename(columns={"name": "trail_name"}, inplace=True)
-    df.drop(columns=["id"], inplace=True)
-    df["trail_name"] = df["trail_name"].fillna("Unnamed Trail")
+    df_trails = df_tp.merge(
+        df_ts[["id", "name", "area_id"]],
+        left_on="trail_id",
+        right_on="id",
+        how="left"
+    )
 
-    # Apply util calculations
-    df = util.calculate_damage_score(df)
-    df = util.calculate_condition_score(df)
-    df = util.calculate_median_speed_score(df)
+    df_trails.rename(columns={"name": "trail_name"}, inplace=True)
+    df_trails.drop(columns=["id"], inplace=True)
+    df_trails["trail_name"] = df_trails["trail_name"].fillna("Unnamed Trail")
 
-    return df
+    # Utility calculations
+    df_trails = util.calculate_damage_score(df_trails)
+    df_trails = util.calculate_condition_score(df_trails)
+    df_trails = util.calculate_median_speed_score(df_trails)
 
+    # --- Areas ---
+    df_areas = fetch_area_predictions_raw(three_days_ago)
+    if not df_areas.empty:
+        df_areas = util.calculate_area_scores(df_areas, df_trails)
 
-def fetch_area_predictions(df_trails: pd.DataFrame, after: str) -> pd.DataFrame:
-    df_areas = fetch_area_predictions_raw(after)
-    if df_areas.empty or df_trails.empty:
-        return pd.DataFrame()
+    return df_areas, df_trails
 
-    # Apply util calculations
-    df_areas = util.calculate_area_scores(df_areas, df_trails)
-    return df_areas
-
+# --------------------------------------------------
+# GEOMETRY PROCESSING (NOT CACHED)
+# --------------------------------------------------
 
 def fetch_segments() -> pd.DataFrame:
     """
-    Fetch trail_segments and parse geometries for mapping.
+    Fetch trail segments and parse geometry for mapping.
+    NOT cached because shapely objects are not serializable.
     """
     df = fetch_segments_raw()
 
@@ -145,9 +165,9 @@ def fetch_segments() -> pd.DataFrame:
             except Exception:
                 return None
         if isinstance(g, (bytes, bytearray, memoryview)):
-            if isinstance(g, memoryview):
-                g = g.tobytes()
             try:
+                if isinstance(g, memoryview):
+                    g = g.tobytes()
                 return wkb.loads(g)
             except Exception:
                 return None
@@ -157,14 +177,15 @@ def fetch_segments() -> pd.DataFrame:
     df["coords"] = df["geometry"].apply(
         lambda g: [(pt[1], pt[0]) for pt in g.coords] if g else []
     )
+
     return df
 
+# --------------------------------------------------
+# PUBLIC API FOR APP.PY
+# --------------------------------------------------
 
 def fetch_predictions():
     """
-    Unified fetch function for the app.
+    App-facing function.
     """
-    three_days_ago = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
-    df_trails = fetch_trail_predictions(three_days_ago)
-    df_areas = fetch_area_predictions(df_trails, three_days_ago)
-    return df_areas, df_trails
+    return fetch_predictions_processed()

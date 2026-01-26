@@ -40,14 +40,13 @@ def calculate_median_speed_score(df: pd.DataFrame) -> pd.DataFrame:
     trail_medians = df.dropna(subset=["trail_name"]).groupby("trail_name")["median_speed"].median().to_dict()
 
     def score_from_speed(row):
-        trail_name = row.get("trail_name")
-        median_speed = row.get("median_speed", 0)
+        trail_name = row["trail_name"] if pd.notna(row["trail_name"]) else None
+        median_speed = row["median_speed"] if pd.notna(row["median_speed"]) else 0
 
-        # Skip missing trail_name or zero speed
         if not trail_name or median_speed == 0:
             return 0
 
-        trail_median = trail_medians.get(trail_name, median_speed)  # fallback to current row speed
+        trail_median = trail_medians.get(trail_name, median_speed)
         if trail_median == 0:
             return 0
 
@@ -56,6 +55,7 @@ def calculate_median_speed_score(df: pd.DataFrame) -> pd.DataFrame:
 
     df["speed_score"] = df.apply(score_from_speed, axis=1)
     return df
+
 
 
 def calculate_area_scores(df_areas: pd.DataFrame, df_trails: pd.DataFrame) -> pd.DataFrame:

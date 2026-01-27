@@ -23,6 +23,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 @st.cache_data(ttl=7200)
 def fetch_trail_predictions_raw(after: str) -> pd.DataFrame:
+    print("Fetching trail predictions from database")
     batch_size = 1000
     offset = 0
     all_rows = []
@@ -50,6 +51,7 @@ def fetch_trail_predictions_raw(after: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=7200)
 def fetch_area_predictions_raw(after: str) -> pd.DataFrame:
+    print("Fetching area predictions from database")
     batch_size = 1000
     offset = 0
     all_rows = []
@@ -86,10 +88,33 @@ def fetch_area_predictions_raw(after: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=7200)
-def fetch_segments_raw() -> pd.DataFrame:
-    resp = supabase.table("trail_segments").select("*").execute()
+def fetch_segments_raw(batch_size=1000) -> pd.DataFrame:
+    print("Fetching segments from database")
 
-    if not resp.data:
+    all_rows = []
+    offset = 0
+
+    while True:
+        resp = (
+            supabase
+            .table("trail_segments")
+            .select("*")
+            .range(offset, offset + batch_size - 1)
+            .execute()
+        )
+
+        if not resp.data:
+            break
+
+        all_rows.extend(resp.data)
+
+        # Stop if fewer than batch_size returned (last page)
+        if len(resp.data) < batch_size:
+            break
+
+        offset += batch_size
+
+    if not all_rows:
         return pd.DataFrame(
             columns=[
                 "id",
@@ -102,7 +127,8 @@ def fetch_segments_raw() -> pd.DataFrame:
             ]
         )
 
-    return pd.DataFrame(resp.data)
+    return pd.DataFrame(all_rows)
+
 
 # --------------------------------------------------
 # PROCESSED DATA (CACHED, STILL NO GEOMETRY)
@@ -114,6 +140,7 @@ def fetch_predictions_processed():
     Returns df_areas, df_trails
     Fully processed but WITHOUT shapely geometry.
     """
+    print("Fetching processed predictions")
     three_days_ago = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
 
     # --- Trails ---

@@ -533,7 +533,7 @@ with tab2:
 
         fig.update_traces(line_shape="spline")
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     area_names = df_areas["area_name"].unique()
     selected_area = st.selectbox("Select Area", area_names)
@@ -672,7 +672,7 @@ with tab2:
             line_color="white"
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 
@@ -763,7 +763,7 @@ with tab2:
             line_color="white"
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     plot_condition_types(df_areas, selected_area)
 
 
@@ -863,7 +863,7 @@ with tab2:
             line_color="white"
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     plot_trail_conditions(df_areas, selected_area)
 
@@ -872,8 +872,6 @@ with tab2:
     # AREA SUMMARY
     # --------------------------------------------------
     st.subheader("Area comparison")
-
-    import pytz
 
     # Define the timezone your data uses (adjust if different)
     data_tz = "Europe/Oslo"
